@@ -34,6 +34,7 @@ def chunker(file_path, chunksize=5000):
     - file_path: Path to the BLAST6 search results file.
     - chunksize: Approximate number of rows per chunk. The actual size may vary to prevent splitting qseqids.
     """
+    chunks = []
     chunk = []  # Temporary storage for the current chunk
     current_qseqid = None  # Track the current qseqid being processed
 
@@ -43,22 +44,22 @@ def chunker(file_path, chunksize=5000):
 
             # Check if we should start a new chunk
             if current_qseqid and line_qseqid != current_qseqid and len(chunk) >= chunksize:
-                yield pd.DataFrame(chunk,
+                chunks.append(pd.DataFrame(chunk,
                                    columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
-                                            'qend', 'sstart', 'send', 'evalue', 'bitscore'])
+                                            'qend', 'sstart', 'send', 'evalue', 'bitscore']))
                 chunk = []
 
             chunk.append(line.strip().split('\t'))
             current_qseqid = line_qseqid
 
         if chunk:
-            yield pd.DataFrame(chunk,
+            chunks.append(pd.DataFrame(chunk,
                                columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend',
-                                        'sstart', 'send', 'evalue', 'bitscore'])
-
+                                        'sstart', 'send', 'evalue', 'bitscore']))
+    return chunks
 
 def find_consensus_annotation(file_path, reference_taxonomy, min_consensus=0.51,
-                                        unassignable_label="Unassigned", chunksize=10000):
+                                        unassignable_label="Unassigned", chunksize=5000):
     '''Find consensus taxonomy from BLAST6Format alignment summary.'''
 
     results = []

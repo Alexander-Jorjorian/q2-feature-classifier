@@ -37,7 +37,7 @@ def chunker(file_path, chunksize=5000):
     chunks = []
     chunk = []  # Temporary storage for the current chunk
     current_qseqid = None  # Track the current qseqid being processed
-
+    chunk_num = 1  # Track the current chunk number
     with open(file_path, 'r') as file:
         for line in file:
             line_qseqid = line.split('\t')[0]
@@ -48,11 +48,14 @@ def chunker(file_path, chunksize=5000):
                                    columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
                                             'qend', 'sstart', 'send', 'evalue', 'bitscore']))
                 chunk = []
+                print(f'Chunk {chunk_num} complete')
+                chunk_num += 1
 
             chunk.append(line.strip().split('\t'))
             current_qseqid = line_qseqid
 
         if chunk:
+            print(f'Chunk {chunk_num} complete')
             chunks.append(pd.DataFrame(chunk,
                                columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend',
                                         'sstart', 'send', 'evalue', 'bitscore']))

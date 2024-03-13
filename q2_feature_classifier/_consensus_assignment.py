@@ -14,7 +14,7 @@ import pandas as pd
 from qiime2.plugin import Str, Float, Range
 from .plugin_setup import plugin
 from q2_types.feature_data import FeatureData, Taxonomy, BLAST6
-
+from concurrent.futures import ProcessPoolExecutor
 
 min_consensus_param = {'min_consensus': Float % Range(
     0.5, 1.0, inclusive_end=True, inclusive_start=False)}
@@ -26,7 +26,53 @@ min_consensus_param_description = {
 DEFAULTUNASSIGNABLELABEL = "Unassigned"
 
 
-def find_consensus_annotation(search_results: pd.DataFrame,
+def chunker(file_path, chunksize=5000):
+    """
+    A generator that yields chunks of the DataFrame without splitting qseqid's across chunks.
+
+    Parameters:
+    - file_path: Path to the BLAST6 search results file.
+    - chunksize: Approximate number of rows per chunk. The actual size may vary to prevent splitting qseqids.
+    """
+    chunk = []  # Temporary storage for the current chunk
+    current_qseqid = None  # Track the current qseqid being processed
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            line_qseqid = line.split('\t')[0]
+
+            # Check if we should start a new chunk
+            if current_qseqid and line_qseqid != current_qseqid and len(chunk) >= chunksize:
+                yield pd.DataFrame(chunk,
+                                   columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
+                                            'qend', 'sstart', 'send', 'evalue', 'bitscore'])
+                chunk = []
+
+            chunk.append(line.strip().split('\t'))
+            current_qseqid = line_qseqid
+
+        if chunk:
+            yield pd.DataFrame(chunk,
+                               columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend',
+                                        'sstart', 'send', 'evalue', 'bitscore'])
+
+
+def find_consensus_annotation(file_path, reference_taxonomy, min_consensus=0.51,
+                                        unassignable_label="Unassigned", chunksize=10000):
+    '''Find consensus taxonomy from BLAST6Format alignment summary.'''
+
+    results = []
+    with ProcessPoolExecutor() as executor:
+        chunks = chunker(file_path, chunksize=chunksize)
+        futures = [executor.submit(_find_consensus_annotation, chunk, reference_taxonomy, min_consensus, unassignable_label) for
+                   chunk in chunks]
+        for future in futures:
+            results.append(future.result())
+
+    final_result = pd.concat(results)
+    return final_result
+
+def _find_consensus_annotation(search_results: pd.DataFrame,
                               reference_taxonomy: pd.Series,
                               min_consensus: int = 0.51,
                               unassignable_label: str =

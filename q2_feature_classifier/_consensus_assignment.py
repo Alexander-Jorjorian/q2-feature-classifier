@@ -26,54 +26,53 @@ min_consensus_param_description = {
 DEFAULTUNASSIGNABLELABEL = "Unassigned"
 
 
-def chunker(file_path, chunksize=5000):
+def chunker(df, chunksize=5000):
     """
     A generator that yields chunks of the DataFrame without splitting qseqid's across chunks.
 
     Parameters:
-    - file_path: Path to the BLAST6 search results file.
+    - df: DataFrame containing the BLAST6 search results.
     - chunksize: Approximate number of rows per chunk. The actual size may vary to prevent splitting qseqids.
     """
-    chunks = []
     chunk = []  # Temporary storage for the current chunk
+    chunks = []  # List of chunks to be returned
     current_qseqid = None  # Track the current qseqid being processed
     chunk_num = 1  # Track the current chunk number
-    with open(file_path, 'r') as file:
-        for line in file:
-            line_qseqid = line.split('\t')[0]
 
-            # Check if we should start a new chunk
-            if current_qseqid and line_qseqid != current_qseqid and len(chunk) >= chunksize:
-                chunks.append(pd.DataFrame(chunk,
-                                   columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
-                                            'qend', 'sstart', 'send', 'evalue', 'bitscore']))
-                chunk = []
-                print(f'Chunk {chunk_num} complete')
-                chunk_num += 1
+    for index, row in df.iterrows():
+        row_qseqid = row['qseqid']
 
-            chunk.append(line.strip().split('\t'))
-            current_qseqid = line_qseqid
-
-        if chunk:
+        # Check if we should start a new chunk
+        if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= chunksize:
+            chunks.append(pd.DataFrame(chunk, columns=df.columns))
+            chunk = []  # Start a new chunk
             print(f'Chunk {chunk_num} complete')
-            chunks.append(pd.DataFrame(chunk,
-                               columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend',
-                                        'sstart', 'send', 'evalue', 'bitscore']))
+            chunk_num += 1
+
+        chunk.append(row)
+        current_qseqid = row_qseqid
+
+    # Yield the last chunk if it's not empty
+    if chunk:
+        print(f'Chunk {chunk_num} complete')
+        chunks.append(pd.DataFrame(chunk, columns=df.columns))
     return chunks
 
-def find_consensus_annotation(file_path, reference_taxonomy, min_consensus=0.51,
+
+def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy, min_consensus=0.51,
                                         unassignable_label="Unassigned", chunksize=5000):
     '''Find consensus taxonomy from BLAST6Format alignment summary.'''
 
     results = []
     with ProcessPoolExecutor() as executor:
-        chunks = chunker(file_path, chunksize=chunksize)
+        chunks = chunker(search_results, chunksize=chunksize)
         futures = [executor.submit(_find_consensus_annotation, chunk, reference_taxonomy, min_consensus, unassignable_label) for
                    chunk in chunks]
         for future in futures:
             results.append(future.result())
 
     final_result = pd.concat(results)
+
     return final_result
 
 def _find_consensus_annotation(search_results: pd.DataFrame,

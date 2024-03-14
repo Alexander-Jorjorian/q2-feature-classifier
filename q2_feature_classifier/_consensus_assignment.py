@@ -60,12 +60,12 @@ def chunker(df):
 
 
 def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy, min_consensus=0.51,
-                                        unassignable_label="Unassigned", chunksize=5000):
+                                        unassignable_label="Unassigned"):
     '''Find consensus taxonomy from BLAST6Format alignment summary.'''
 
     results = []
     with ProcessPoolExecutor() as executor:
-        chunks = chunker(search_results, chunksize=chunksize)
+        chunks = chunker(search_results)
         futures = [executor.submit(_find_consensus_annotation, chunk, reference_taxonomy, min_consensus, unassignable_label) for
                    chunk in chunks]
         for future in futures:

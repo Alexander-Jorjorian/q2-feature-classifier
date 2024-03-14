@@ -26,7 +26,7 @@ min_consensus_param_description = {
 DEFAULTUNASSIGNABLELABEL = "Unassigned"
 
 
-def chunker(df):
+def chunker(df:pd.DataFrame, chunksize: int=5000):
     """
     A generator that yields chunks of the DataFrame without splitting qseqid's across chunks.
 
@@ -43,7 +43,7 @@ def chunker(df):
         row_qseqid = row['qseqid']
 
         # Check if we should start a new chunk
-        if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= 5000:
+        if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= chunksize:
             chunks.append(pd.DataFrame(chunk, columns=df.columns))
             chunk = []  # Start a new chunk
             print(f'Chunk {chunk_num} complete')
@@ -59,13 +59,13 @@ def chunker(df):
     return chunks
 
 
-def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy, min_consensus=0.51,
-                                        unassignable_label="Unassigned"):
+def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy:pd.Series, min_consensus: float=0.51,
+                                        unassignable_label:str="Unassigned", chunksize: int=5000):
     '''Find consensus taxonomy from BLAST6Format alignment summary.'''
 
     results = []
     with ProcessPoolExecutor() as executor:
-        chunks = chunker(search_results)
+        chunks = chunker(search_results, chunksize=chunksize)
         futures = [executor.submit(_find_consensus_annotation, chunk, reference_taxonomy, min_consensus, unassignable_label) for
                    chunk in chunks]
         for future in futures:

@@ -168,8 +168,11 @@ def _blast6format_df_to_series_of_lists(
     assignments_copy = assignments.copy(deep=True)
     for index, value in assignments_copy.iterrows():
         print(index, value)
-        sseqid = assignments_copy.iloc[index]['sseqid']
-        assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
+        try:
+            sseqid = assignments_copy.iloc[index]['sseqid']
+            assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
+        except:
+            print(f'Error with {index} and {value}')
     # convert to dict of {accession_id: [annotations]}
     taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
     taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)

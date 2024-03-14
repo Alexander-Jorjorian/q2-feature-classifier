@@ -26,7 +26,7 @@ min_consensus_param_description = {
 DEFAULTUNASSIGNABLELABEL = "Unassigned"
 
 
-def chunker(df, chunksize=5000):
+def chunker(df):
     """
     A generator that yields chunks of the DataFrame without splitting qseqid's across chunks.
 
@@ -43,7 +43,7 @@ def chunker(df, chunksize=5000):
         row_qseqid = row['qseqid']
 
         # Check if we should start a new chunk
-        if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= chunksize:
+        if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= 5000:
             chunks.append(pd.DataFrame(chunk, columns=df.columns))
             chunk = []  # Start a new chunk
             print(f'Chunk {chunk_num} complete')

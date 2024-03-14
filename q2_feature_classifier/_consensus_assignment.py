@@ -46,7 +46,6 @@ def _chunker(df:pd.DataFrame, chunksize: int=5000):
         if current_qseqid and row_qseqid != current_qseqid and len(chunk) >= chunksize:
             chunks.append(pd.DataFrame(chunk, columns=df.columns))
             chunk = []  # Start a new chunk
-            print(f'Chunk {chunk_num} complete')
             chunk_num += 1
 
         chunk.append(row)
@@ -65,7 +64,7 @@ def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy: 
 
     results = []
     with ProcessPoolExecutor() as executor:
-        chunks = _chunker(search_results, chunksize=500)
+        chunks = _chunker(search_results, chunksize=5000)
         futures = [executor.submit(_find_consensus_annotation, chunk, reference_taxonomy, min_consensus,
                                    unassignable_label) for
                    chunk in chunks]
@@ -168,6 +167,7 @@ def _blast6format_df_to_series_of_lists(
     ref_taxa['*'] = unassignable_label
     assignments_copy = assignments.copy(deep=True)
     for index, value in assignments_copy.iterrows():
+        print(assignments_copy.columns)
         sseqid = assignments_copy.iloc[index]['sseqid']
         assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
     # convert to dict of {accession_id: [annotations]}

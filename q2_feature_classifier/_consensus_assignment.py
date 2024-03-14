@@ -167,7 +167,7 @@ def _blast6format_df_to_series_of_lists(
     ref_taxa['*'] = unassignable_label
     assignments_copy = assignments.copy(deep=True)
     for index, value in assignments_copy.iterrows():
-        print(assignments_copy.columns)
+        print(index, value)
         sseqid = assignments_copy.iloc[index]['sseqid']
         assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
     # convert to dict of {accession_id: [annotations]}

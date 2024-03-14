@@ -60,7 +60,7 @@ def _chunker(df:pd.DataFrame, chunksize: int=5000):
 
 
 def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy: pd.Series, min_consensus: float = 0.51,
-                              unassignable_label: str = "Unassigned"):
+                              unassignable_label: str = "Unassigned") -> pd.DataFrame:
     '''Find consensus taxonomy from BLAST6Format alignment summary.'''
 
     results = []

@@ -167,14 +167,8 @@ def _blast6format_df_to_series_of_lists(
     ref_taxa['*'] = unassignable_label
     assignments_copy = assignments.copy(deep=True)
     for index, value in assignments_copy.iterrows():
-        print(index, value)
-        try:
-            sseqid = value['sseqid']
-            assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
-        except:
-            print(f'Error: {index} not found in reference taxonomy')
-            print('Failed')
-            return 0
+        sseqid = value['sseqid']
+        assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
     # convert to dict of {accession_id: [annotations]}
     taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
     taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)

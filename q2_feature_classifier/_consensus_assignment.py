@@ -97,7 +97,8 @@ def _find_consensus_annotation(search_results: pd.DataFrame,
     # load and convert blast6format results to dict of taxa hits
     obs_taxa = _blast6format_df_to_series_of_lists(
         search_results, reference_taxonomy,
-        unassignable_label=unassignable_label)
+        unassignable_label=unassignable_label,
+        n=1)
     # TODO: is it worth allowing early stopping if maxaccepts==1?
     # compute consensus annotations
     result = _compute_consensus_annotations(
@@ -136,41 +137,46 @@ plugin.methods.register_function(
 def _blast6format_df_to_series_of_lists(
         assignments: pd.DataFrame,
         ref_taxa: pd.Series,
-        unassignable_label: str = DEFAULTUNASSIGNABLELABEL
+        n: int,
+        unassignable_label: str = 'DEFAULT_UNASSIGNABLE_LABEL'
 ) -> pd.Series:
-    """import observed assignments in blast6 format to series of lists.
-
-    assignments: pd.DataFrame
-        Taxonomy observation map in blast format 6. Each line consists of
-        taxonomy assignments of a query sequence in tab-delimited format:
-            <query_id>    <subject-seq-id>   <...other columns are ignored>
-
-    ref_taxa: pd.Series
-        Reference taxonomies in tab-delimited format:
-            <accession ID>  Annotation
-        The accession IDs in this taxonomy should match the subject-seq-ids in
-        the "assignment" input.
     """
-    # validate that assignments are present in reference taxonomy
-    # (i.e., that the correct reference taxonomy was used).
-    # Note that we drop unassigned labels from this set.
+    Modified to include filtering based on top n bitscores per query_id.
+    """
+
+    # Validate presence in reference taxonomy.
     missing_ids = \
         set(assignments['sseqid'].values) - set(ref_taxa.index) - {'*', ''}
     if len(missing_ids) > 0:
         raise KeyError('Reference taxonomy and search results do not match. '
                        'The following identifiers were reported in the search '
-                       'results but are not present in the reference taxonomy:'
-                       ' {0}'.format(', '.join(str(i) for i in missing_ids)))
+                       'results but are not present in the reference taxonomy: '
+                       '{0}'.format(', '.join(str(i) for i in missing_ids)))
 
-    # if vsearch fails to find assignment, it reports '*' as the
-    # accession ID, so we will add this mapping to the reference taxonomy.
     ref_taxa['*'] = unassignable_label
-    assignments_copy = assignments.copy(deep=True)
-    for index, value in assignments_copy.iterrows():
-        sseqid = value['sseqid']
-        assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
-    # convert to dict of {accession_id: [annotations]}
-    taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
+
+    # Assume there's a 'bitscore' column in assignments for the bitscore of each hit.
+    # First, calculate average bitscore for each subject-seq-id per query.
+    # set the name of the column to 'bitscore' if it's not already set
+    assignments['bitscore'] = assignments.iloc[:, -1]
+    max_bitscores = assignments.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
+
+    # Then, rank these average bitscores within each query.
+    max_bitscores['rank'] = max_bitscores.groupby('qseqid')['bitscore'].rank(method='first', ascending=False)
+
+    # Filter to keep only hits with a rank of n or better.
+    top_hits = max_bitscores[max_bitscores['rank'] <= n]
+
+    # Merge back to the original assignments to filter it down to the top hits.
+    # This keeps all columns for the top hits, including those hits that have the same subject-seq-id
+    # as a top hit.
+    top_assignments = pd.merge(assignments, top_hits[['qseqid', 'sseqid']], on=['qseqid', 'sseqid'], how='inner')
+
+    # Map sseqid to the taxonomy annotation from ref_taxa.
+    top_assignments['sseqid'] = top_assignments['sseqid'].map(ref_taxa).fillna(unassignable_label)
+
+    # Convert to the desired format: dict of {query_id: [annotations]}
+    taxa_hits: pd.Series = top_assignments.set_index('qseqid')['sseqid']
     taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
 
     return taxa_hits

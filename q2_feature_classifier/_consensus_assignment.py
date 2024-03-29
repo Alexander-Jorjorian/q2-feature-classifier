@@ -166,12 +166,17 @@ def _blast6format_df_to_series_of_lists(
 
     # Filter original assignments based on top hits
     top_assignments = pd.merge(assignments, top_hits[['qseqid', 'sseqid']], on=['qseqid', 'sseqid'], how='inner')
-
+    for index, value in top_assignments.iterrows():
+        print(index, value)
+        try:
+            sseqid = top_assignments.iloc[index]['sseqid']
+            top_assignments.at[index, 'sseqid'] = ref_taxa.at[sseqid]
+        except:
+            print(f'Error with {index} and {value}')
     # Map sseqid to taxonomy annotation
-    top_assignments['taxonomy_annotation'] = top_assignments['sseqid'].map(ref_taxa).fillna(unassignable_label)
-
+    taxa_hits: pd.Series = top_assignments.set_index('qseqid')['sseqid']
+    taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
     # Aggregate taxonomy annotations into lists for each qseqid
-    taxa_hits = top_assignments.groupby('qseqid')['taxonomy_annotation'].apply(list).rename('taxonomy_annotations')
 
     return taxa_hits
 

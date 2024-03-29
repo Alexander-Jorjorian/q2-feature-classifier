@@ -145,40 +145,33 @@ def _blast6format_df_to_series_of_lists(
     """
 
     # Validate presence in reference taxonomy.
-    missing_ids = \
-        set(assignments['sseqid'].values) - set(ref_taxa.index) - {'*', ''}
-    if len(missing_ids) > 0:
+    missing_ids = set(assignments['sseqid']) - set(ref_taxa.index) - {'*', ''}
+    if missing_ids:
         raise KeyError('Reference taxonomy and search results do not match. '
                        'The following identifiers were reported in the search '
                        'results but are not present in the reference taxonomy: '
                        '{0}'.format(', '.join(str(i) for i in missing_ids)))
 
-    ref_taxa['*'] = unassignable_label
+    # Handle unassignable label
+    ref_taxa = ref_taxa.append(pd.Series([unassignable_label], index=['*']))
 
-    # Assume there's a 'bitscore' column in assignments for the bitscore of each hit.
-    # First, calculate average bitscore for each subject-seq-id per query.
-    # set the name of the column to 'bitscore' if it's not already set
-    assignments.iloc[:, -1] = assignments.iloc[:, -1].replace('', 0)
-    assignments['bitscore'] = assignments.iloc[:, -1].astype(float)
+    # Assuming 'bitscore' is the last column
+    assignments.iloc[:, -1] = assignments.iloc[:, -1].replace('', 0).astype(float)
+    assignments['bitscore'] = assignments.iloc[:, -1]
+
+    # Compute max bitscore for each sseqid per qseqid and filter
     max_bitscores = assignments.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
-
-    # Then, rank these average bitscores within each query.
     max_bitscores['rank'] = max_bitscores.groupby('qseqid')['bitscore'].rank(method='first', ascending=False)
-
-    # Filter to keep only hits with a rank of n or better.
     top_hits = max_bitscores[max_bitscores['rank'] <= n]
 
-    # Merge back to the original assignments to filter it down to the top hits.
-    # This keeps all columns for the top hits, including those hits that have the same subject-seq-id
-    # as a top hit.
+    # Filter original assignments based on top hits
     top_assignments = pd.merge(assignments, top_hits[['qseqid', 'sseqid']], on=['qseqid', 'sseqid'], how='inner')
 
-    # Map sseqid to the taxonomy annotation from ref_taxa.
-    top_assignments['sseqid'] = top_assignments['sseqid'].map(ref_taxa).fillna(unassignable_label)
+    # Map sseqid to taxonomy annotation
+    top_assignments['taxonomy_annotation'] = top_assignments['sseqid'].map(ref_taxa).fillna(unassignable_label)
 
-    # Convert to the desired format: dict of {query_id: [annotations]}
-    taxa_hits: pd.Series = top_assignments.set_index('qseqid')['sseqid']
-    taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
+    # Aggregate taxonomy annotations into lists for each qseqid
+    taxa_hits = top_assignments.groupby('qseqid')['taxonomy_annotation'].apply(list).rename('taxonomy_annotations')
 
     return taxa_hits
 

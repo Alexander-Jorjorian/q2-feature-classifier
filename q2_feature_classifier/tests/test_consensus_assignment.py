@@ -299,6 +299,7 @@ class ImportBlastAssignmentTests(FeatureClassifierTestPluginBase):
              'junk': ['Unassigned']},
             name='sseqid')
         exp.index.name = 'qseqid'
+        print(obs)
         pdt.assert_series_equal(exp, obs)
 
     # should fail when hit IDs are missing from reference taxonomy

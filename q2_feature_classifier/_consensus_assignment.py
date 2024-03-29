@@ -158,7 +158,7 @@ def _blast6format_df_to_series_of_lists(
     # Assume there's a 'bitscore' column in assignments for the bitscore of each hit.
     # First, calculate average bitscore for each subject-seq-id per query.
     # set the name of the column to 'bitscore' if it's not already set
-    assignments['bitscore'] = assignments.iloc[:, -1]
+    assignments['bitscore'] = assignments.iloc[:, -1].astype(float)
     max_bitscores = assignments.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
 
     # Then, rank these average bitscores within each query.

@@ -145,34 +145,32 @@ def _blast6format_df_to_series_of_lists(
     """
 
     # Validate presence in reference taxonomy.
-    missing_ids = set(assignments['sseqid']) - set(ref_taxa.index) - {'*', ''}
-    if missing_ids:
+    missing_ids = set(assignments['sseqid'].values) - set(ref_taxa.index) - {'*', ''}
+    if len(missing_ids) > 0:
         raise KeyError('Reference taxonomy and search results do not match. '
                        'The following identifiers were reported in the search '
                        'results but are not present in the reference taxonomy: '
                        '{0}'.format(', '.join(str(i) for i in missing_ids)))
 
     # Handle unassignable label
-    ref_taxa = ref_taxa.append(pd.Series([unassignable_label], index=['*']))
+    ref_taxa['*'] = unassignable_label
 
     # Assuming 'bitscore' is the last column
-    assignments.iloc[:, -1] = assignments.iloc[:, -1].replace('', 0).astype(float)
-    assignments['bitscore'] = assignments.iloc[:, -1]
-
+    assignments_copy = assignments.copy(deep=True)
+    assignments_copy.iloc[:, -1] = assignments_copy.iloc[:, -1].replace('', 0).astype(float)
+    assignments_copy['bitscore'] = assignments_copy.iloc[:, -1]
+    for index, value in assignments_copy.iterrows():
+        print(assignments_copy.columns)
+        sseqid = assignments_copy.iloc[index]['sseqid']
+        assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
     # Compute max bitscore for each sseqid per qseqid and filter
-    max_bitscores = assignments.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
+    max_bitscores = assignments_copy.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
     max_bitscores['rank'] = max_bitscores.groupby('qseqid')['bitscore'].rank(method='first', ascending=False)
     top_hits = max_bitscores[max_bitscores['rank'] <= n]
 
     # Filter original assignments based on top hits
     top_assignments = pd.merge(assignments, top_hits[['qseqid', 'sseqid']], on=['qseqid', 'sseqid'], how='inner')
-    for index, value in top_assignments.iterrows():
-        print(index, value)
-        try:
-            sseqid = top_assignments.iloc[index]['sseqid']
-            top_assignments.at[index, 'sseqid'] = ref_taxa.at[sseqid]
-        except:
-            print(f'Error with {index} and {value}')
+    print(top_assignments.head())
     # Map sseqid to taxonomy annotation
     taxa_hits: pd.Series = top_assignments.set_index('qseqid')['sseqid']
     taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)

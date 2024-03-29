@@ -137,7 +137,7 @@ plugin.methods.register_function(
 def _blast6format_df_to_series_of_lists(
         assignments: pd.DataFrame,
         ref_taxa: pd.Series,
-        n: int,
+        n: int=1 ,
         unassignable_label: str = 'DEFAULT_UNASSIGNABLE_LABEL'
 ) -> pd.Series:
     """

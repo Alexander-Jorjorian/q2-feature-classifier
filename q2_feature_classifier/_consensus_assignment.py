@@ -170,9 +170,10 @@ def _blast6format_df_to_series_of_lists(
             return 0
     # select all hits with top n bitscores
     assignments_copy = assignments_copy.sort_values('bitscore', ascending=False).groupby('qseqid').head(n)
+    # clear groupby
     # Map sseqid to taxonomy annotation
     taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
-    taxa_hits = assignments_copy.groupby(taxa_hits.index).apply(list)
+    taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
     # Aggregate taxonomy annotations into lists for each qseqid
 
     return taxa_hits

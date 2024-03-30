@@ -72,6 +72,7 @@ def find_consensus_annotation(search_results: pd.DataFrame, reference_taxonomy: 
             results.append(future.result())
 
     final_result = pd.concat(results)
+    print(final_result.head(100))
 
     return final_result
 

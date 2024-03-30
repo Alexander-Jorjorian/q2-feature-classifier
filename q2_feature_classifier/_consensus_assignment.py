@@ -173,6 +173,7 @@ def _blast6format_df_to_series_of_lists(
     # Map sseqid to taxonomy annotation
     taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
     taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
+    print(taxa_hits)
     # Aggregate taxonomy annotations into lists for each qseqid
 
     return taxa_hits

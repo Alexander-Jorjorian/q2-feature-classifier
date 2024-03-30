@@ -160,20 +160,19 @@ def _blast6format_df_to_series_of_lists(
     assignments_copy.iloc[:, -1] = assignments_copy.iloc[:, -1].replace('', 0).astype(float)
     assignments_copy['bitscore'] = assignments_copy.iloc[:, -1]
     for index, value in assignments_copy.iterrows():
-        print(assignments_copy.columns)
-        sseqid = assignments_copy.iloc[index]['sseqid']
-        assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
-    # Compute max bitscore for each sseqid per qseqid and filter
-    max_bitscores = assignments_copy.groupby(['qseqid', 'sseqid'])['bitscore'].max().reset_index()
-    max_bitscores['rank'] = max_bitscores.groupby('qseqid')['bitscore'].rank(method='first', ascending=False)
-    top_hits = max_bitscores[max_bitscores['rank'] <= n]
-
-    # Filter original assignments based on top hits
-    top_assignments = pd.merge(assignments, top_hits[['qseqid', 'sseqid']], on=['qseqid', 'sseqid'], how='inner')
-    print(top_assignments.head())
+        print(index, value)
+        try:
+            sseqid = value['sseqid']
+            assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]
+        except:
+            print(f'Error: {index} not found in reference taxonomy')
+            print('Failed')
+            return 0
+    # select all hits with top n bitscores
+    assignments_copy = assignments_copy.sort_values('bitscore', ascending=False).groupby('qseqid').head(n)
     # Map sseqid to taxonomy annotation
-    taxa_hits: pd.Series = top_assignments.set_index('qseqid')['sseqid']
-    taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
+    taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
+    taxa_hits = assignments_copy.groupby(taxa_hits.index).apply(list)
     # Aggregate taxonomy annotations into lists for each qseqid
 
     return taxa_hits

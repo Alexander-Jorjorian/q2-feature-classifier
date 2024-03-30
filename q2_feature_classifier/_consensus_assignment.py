@@ -160,7 +160,6 @@ def _blast6format_df_to_series_of_lists(
     assignments_copy.iloc[:, -1] = assignments_copy.iloc[:, -1].replace('', 0).astype(float)
     assignments_copy['bitscore'] = assignments_copy.iloc[:, -1]
     for index, value in assignments_copy.iterrows():
-        print(index, value)
         try:
             sseqid = value['sseqid']
             assignments_copy.at[index, 'sseqid'] = ref_taxa.at[sseqid]

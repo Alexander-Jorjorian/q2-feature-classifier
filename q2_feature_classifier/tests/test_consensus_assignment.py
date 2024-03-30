@@ -286,7 +286,7 @@ class ImportBlastAssignmentTests(FeatureClassifierTestPluginBase):
 
     def test_blast6format_df_to_series_of_lists(self):
         # and add in a query without any hits, to check that it is parsed
-        self.result.loc[3] = ['junk', '*'] + [''] * 10
+        self.result.loc[4] = ['junk', '*'] + [''] * 10
         obs = _blast6format_df_to_series_of_lists(self.result, self.taxonomy)
         exp = pd.Series(
             {'1111561': [

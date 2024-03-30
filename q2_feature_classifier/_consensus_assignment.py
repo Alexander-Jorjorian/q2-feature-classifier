@@ -157,6 +157,7 @@ def _blast6format_df_to_series_of_lists(
 
     # Assuming 'bitscore' is the last column
     assignments_copy = assignments.copy(deep=True)
+    print(assignments_copy)
     assignments_copy.iloc[:, -1] = assignments_copy.iloc[:, -1].replace('', 0).astype(float)
     assignments_copy['bitscore'] = assignments_copy.iloc[:, -1]
     # sum bitscores for query_ids that share the same sseqid

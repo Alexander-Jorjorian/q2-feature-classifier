@@ -167,8 +167,9 @@ def _blast6format_df_to_series_of_lists(
             print(f'Error: {index} not found in reference taxonomy')
             print('Failed')
             return 0
-    # select all hits with top n bitscores
-    assignments_copy = assignments_copy.sort_values('bitscore', ascending=False).groupby('qseqid').head(n)
+    # select all hits with bitscore in top n bitscores for each query_id
+    assignments_copy['rank'] = assignments_copy.groupby('qseqid')['bitscore'].rank(method='dense', ascending=False)
+    assignments_copy = assignments_copy[assignments_copy['rank'] <= n]
     # clear groupby
     # Map sseqid to taxonomy annotation
     taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']

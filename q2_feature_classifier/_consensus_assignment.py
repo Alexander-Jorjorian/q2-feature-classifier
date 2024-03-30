@@ -159,6 +159,8 @@ def _blast6format_df_to_series_of_lists(
     assignments_copy = assignments.copy(deep=True)
     assignments_copy.iloc[:, -1] = assignments_copy.iloc[:, -1].replace('', 0).astype(float)
     assignments_copy['bitscore'] = assignments_copy.iloc[:, -1]
+    # sum bitscores for query_ids that share the same sseqid
+    assignments_copy = assignments_copy.groupby(['qseqid', 'sseqid']).agg({'bitscore': 'sum'}).reset_index()
     for index, value in assignments_copy.iterrows():
         try:
             sseqid = value['sseqid']
@@ -172,8 +174,8 @@ def _blast6format_df_to_series_of_lists(
     assignments_copy = assignments_copy[assignments_copy['rank'] <= n]
     # clear groupby
     # Map sseqid to taxonomy annotation
-    taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
-    taxa_hits = taxa_hits.groupby(taxa_hits.index).apply(list)
+    # taxa_hits: pd.Series = assignments_copy.set_index('qseqid')['sseqid']
+    taxa_hits = assignments_copy.groupby('qseqid')['sseqid'].apply(list)
     print(taxa_hits)
     # Aggregate taxonomy annotations into lists for each qseqid
 

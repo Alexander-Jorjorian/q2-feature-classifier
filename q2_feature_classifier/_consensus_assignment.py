@@ -38,7 +38,8 @@ def _chunker(df:pd.DataFrame, chunksize: int=5000):
     chunks = []  # List of chunks to be returned
     current_qseqid = None  # Track the current qseqid being processed
     chunk_num = 1  # Track the current chunk number
-
+    # sort the dataframe by qseqid
+    df = df.sort_values('qseqid')
     for index, row in df.iterrows():
         row_qseqid = row['qseqid']
 

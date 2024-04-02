@@ -100,7 +100,7 @@ def _find_consensus_annotation(search_results: pd.DataFrame,
     obs_taxa = _blast6format_df_to_series_of_lists(
         search_results, reference_taxonomy,
         unassignable_label=unassignable_label,
-        n=1)
+        n=2)
     # TODO: is it worth allowing early stopping if maxaccepts==1?
     # compute consensus annotations
     result = _compute_consensus_annotations(
